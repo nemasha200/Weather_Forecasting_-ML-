@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Agriculture Tips</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-green-100 min-h-screen">
+  <nav class="bg-green-800 text-white p-4 flex justify-between">
+    <h1 class="text-xl font-bold">Agriculture Tips</h1>
+    <a href="/" class="hover:underline">🏠 Back to Dashboard</a>
+  </nav>
+
+  <main class="p-8 space-y-6">
+    <h2 class="text-xl font-bold">Today's Weather-Based Recommendations</h2>
+    <ul id="tips" class="list-disc pl-6 space-y-2 text-lg"></ul>
+  </main>
+
+  <script>
+    fetch('/api/tips')
+      .then(res => res.json())
+      .then(data => {
+        const tips = data.recommendations;
+        const tipsList = document.getElementById("tips");
+        tips.forEach(tip => {
+          const li = document.createElement("li");
+          li.textContent = tip;
+          tipsList.appendChild(li);
+        });
+      });
+  </script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Create Your Account • Weather Prediction System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-emerald-100 via-cyan-100 to-blue-100">
+  <!-- decorative blobs -->
+  <div class="pointer-events-none fixed inset-0 overflow-hidden">
+    <div class="absolute -top-28 -left-20 h-80 w-80 rounded-full bg-emerald-300/20 blur-3xl"></div>
+    <div class="absolute -bottom-28 -right-24 h-96 w-96 rounded-full bg-blue-300/20 blur-3xl"></div>
+  </div>
+
+  <main class="relative z-10 flex min-h-screen items-center justify-center px-4 py-10">
+    <div class="w-full max-w-xl">
+      <!-- header -->
+      <div class="mb-6 text-center">
+        <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/70 shadow-sm backdrop-blur">
+          <svg class="h-7 w-7 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 19v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v3m-1.5-1.5H21"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-gray-900">
+          Create your account
+        </h1>
+        <p class="mt-1 text-sm text-gray-600">Join the Weather Prediction System and get smarter forecasts.</p>
+      </div>
+
+      <!-- card -->
+      <div class="rounded-2xl bg-white/80 p-6 shadow-xl ring-1 ring-gray-200 backdrop-blur">
+        <!-- flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="mb-4 space-y-2">
+              {% for category, message in messages %}
+                <div class="rounded-lg px-3 py-2 text-sm font-medium
+                  {% if category in ['danger','error'] %} bg-red-50 text-red-700 ring-1 ring-red-200
+                  {% elif category == 'success' %} bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200
+                  {% else %} bg-blue-50 text-blue-700 ring-1 ring-blue-200 {% endif %}">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="space-y-4" novalidate id="regForm">
+          {{ form.hidden_tag() }}
+
+          <!-- username -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="username">Username</label>
+            <div class="relative mt-1">
+              <span class="pointer-events-none absolute left-3 top-2.5 text-gray-400">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5.5 20a7.5 7.5 0 1 1 13 0M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+                </svg>
+              </span>
+              {{ form.username(id="username", class="peer w-full rounded-xl border border-gray-300 bg-white/70 pl-10 pr-10 py-2 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition") }}
+              <span id="usernameOk" class="absolute right-3 top-2.5 hidden text-emerald-600">
+                <!-- check -->
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+              </span>
+            </div>
+            {% for e in form.username.errors %}<p class="mt-1 text-sm text-red-600">{{ e }}</p>{% endfor %}
+          </div>
+
+          <!-- email -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="email">Email</label>
+            <div class="relative mt-1">
+              <span class="pointer-events-none absolute left-3 top-2.5 text-gray-400">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 6l8 5 8-5M4 6v12h16V6M4 18l6-4m4 0l6 4"/>
+                </svg>
+              </span>
+              {{ form.email(id="email", class="peer w-full rounded-xl border border-gray-300 bg-white/70 pl-10 pr-10 py-2 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition") }}
+              <span id="emailOk" class="absolute right-3 top-2.5 hidden text-emerald-600">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+              </span>
+            </div>
+            {% for e in form.email.errors %}<p class="mt-1 text-sm text-red-600">{{ e }}</p>{% endfor %}
+          </div>
+
+          <!-- mobile + country -->
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="sm:col-span-1">
+              <label class="block text-sm font-medium text-gray-700" for="country_code">Country Code</label>
+              <div class="relative mt-1">
+                {{ form.country_code(id="country_code", class="w-full appearance-none rounded-xl border border-gray-300 bg-white/70 px-3 py-2 pr-10 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition") }}
+                <svg class="pointer-events-none absolute right-3 top-3 h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.086l3.71-3.855a.75.75 0 011.08 1.04l-4.24 4.41a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+              {% for e in form.country_code.errors %}<p class="mt-1 text-sm text-red-600">{{ e }}</p>{% endfor %}
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-gray-700" for="mobile">Mobile Number</label>
+              <div class="relative mt-1">
+                <span class="pointer-events-none absolute left-3 top-2.5 text-gray-400">
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2zm5 16h.01"/>
+                  </svg>
+                </span>
+                {{ form.mobile(id="mobile", class="peer w-full rounded-xl border border-gray-300 bg-white/70 pl-10 pr-10 py-2 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition") }}
+                <span id="mobileOk" class="absolute right-3 top-2.5 hidden text-emerald-600">
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </span>
+              </div>
+              {% for e in form.mobile.errors %}<p class="mt-1 text-sm text-red-600">{{ e }}</p>{% endfor %}
+            </div>
+          </div>
+
+          <!-- role -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="role">Role</label>
+            <div class="relative mt-1">
+              {{ form.role(id="role", class="w-full appearance-none rounded-xl border border-gray-300 bg-white/70 px-3 py-2 pr-10 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition") }}
+              <svg class="pointer-events-none absolute right-3 top-3 h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.086l3.71-3.855a.75.75 0 011.08 1.04l-4.24 4.41a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            {% for e in form.role.errors %}<p class="mt-1 text-sm text-red-600">{{ e }}</p>{% endfor %}
+          </div>
+
+          <!-- password -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="password">Password</label>
+            <div class="relative mt-1">
+              <span class="pointer-events-none absolute left-3 top-2.5 text-gray-400">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c.94 0 1.75.81 1.75 1.75S12.94 14.5 12 14.5s-1.75-.81-1.75-1.75S11.06 11 12 11z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 8V7a5 5 0 0 0-10 0v1M6 8h12v11H6z"/>
+                </svg>
+              </span>
+              {{ form.password(id="password", class="w-full rounded-xl border border-gray-300 bg-white/70 pl-10 pr-12 py-2 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition") }}
+              <button type="button" id="togglePwd"
+                class="absolute right-2 top-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100">
+                Show
+              </button>
+            </div>
+
+            <!-- strength meter -->
+            <div class="mt-2">
+              <div class="mb-1 flex items-center justify-between">
+                <span class="text-xs text-gray-600">Password strength</span>
+                <span id="strengthLabel" class="text-xs font-medium text-gray-700">—</span>
+              </div>
+              <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                <div id="strengthBar" class="h-2 w-0 rounded-full bg-red-400 transition-all"></div>
+              </div>
+              <ul class="mt-2 grid grid-cols-2 gap-1 text-xs text-gray-600">
+                <li id="ruleLen" class="flex items-center gap-1">
+                  <span class="rule-dot h-1.5 w-1.5 rounded-full bg-gray-300"></span> ≥ 8 characters
+                </li>
+                <li id="ruleUpper" class="flex items-center gap-1">
+                  <span class="rule-dot h-1.5 w-1.5 rounded-full bg-gray-300"></span> Uppercase
+                </li>
+                <li id="ruleLower" class="flex items-center gap-1">
+                  <span class="rule-dot h-1.5 w-1.5 rounded-full bg-gray-300"></span> Lowercase
+                </li>
+                <li id="ruleDigit" class="flex items-center gap-1">
+                  <span class="rule-dot h-1.5 w-1.5 rounded-full bg-gray-300"></span> Number
+                </li>
+                <li id="ruleSpec" class="flex items-center gap-1">
+                  <span class="rule-dot h-1.5 w-1.5 rounded-full bg-gray-300"></span> Symbol
+                </li>
+              </ul>
+            </div>
+            {% for e in form.password.errors %}<p class="mt-1 text-sm text-red-600">{{ e }}</p>{% endfor %}
+          </div>
+
+          <!-- confirm password -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700" for="confirm_password">Confirm Password</label>
+            <div class="relative mt-1">
+              <span class="pointer-events-none absolute left-3 top-2.5 text-gray-400">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c.94 0 1.75.81 1.75 1.75S12.94 14.5 12 14.5s-1.75-.81-1.75-1.75S11.06 11 12 11z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 8V7a5 5 0 0 0-10 0v1M6 8h12v11H6z"/>
+                </svg>
+              </span>
+              {{ form.confirm_password(id="confirm_password", class="w-full rounded-xl border border-gray-300 bg-white/70 pl-10 pr-12 py-2 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition") }}
+              <button type="button" id="toggleConfirm"
+                class="absolute right-2 top-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100">
+                Show
+              </button>
+            </div>
+            <p id="matchMsg" class="mt-1 text-xs"></p>
+            {% for e in form.confirm_password.errors %}<p class="mt-1 text-sm text-red-600">{{ e }}</p>{% endfor %}
+          </div>
+
+          {{ form.submit(id="submitBtn", class="w-full rounded-xl bg-emerald-600 py-2.5 text-white font-semibold shadow hover:bg-emerald-700 active:bg-emerald-800 transition disabled:opacity-50 disabled:cursor-not-allowed", disabled=True) }}
+        </form>
+
+        <p class="mt-5 text-center text-sm text-gray-600">
+          Already have an account?
+          <a href="{{ url_for('login') }}" class="font-semibold text-emerald-700 hover:underline">Log in</a>
+        </p>
+      </div>
+
+      <div class="mt-6 text-center text-xs text-gray-500">
+        By signing up you agree to our <span class="underline">Terms</span> and <span class="underline">Privacy Policy</span>.
+      </div>
+    </div>
+  </main>
+
+  <!-- validation + strength meter -->
+  <script>
+    // DOM
+    const f = {
+      form: document.getElementById('regForm'),
+      username: document.getElementById('username'),
+      email: document.getElementById('email'),
+      mobile: document.getElementById('mobile'),
+      country: document.getElementById('country_code'),
+      role: document.getElementById('role'),
+      password: document.getElementById('password'),
+      confirm: document.getElementById('confirm_password'),
+      submit: document.getElementById('submitBtn'),
+      // marks
+      usernameOk: document.getElementById('usernameOk'),
+      emailOk: document.getElementById('emailOk'),
+      mobileOk: document.getElementById('mobileOk'),
+      // strength
+      bar: document.getElementById('strengthBar'),
+      label: document.getElementById('strengthLabel'),
+      rules: {
+        len: document.getElementById('ruleLen'),
+        upper: document.getElementById('ruleUpper'),
+        lower: document.getElementById('ruleLower'),
+        digit: document.getElementById('ruleDigit'),
+        spec: document.getElementById('ruleSpec'),
+      },
+      matchMsg: document.getElementById('matchMsg'),
+    };
+
+    // Simple validators
+    const PHONE_RE = /^[0-9+\-\s]{7,20}$/;
+    const emailOK = (v) => /^\S+@\S+\.\S+$/.test(v);
+    const usernameOK = (v) => (v || '').trim().length >= 3;
+    const mobileOK = (v) => PHONE_RE.test(v || '');
+    const selected = (el) => !!(el && el.value);
+
+    // Strength scoring
+    function scorePassword(pwd) {
+      let score = 0;
+      const rules = {
+        len: (pwd.length >= 8),
+        upper: /[A-Z]/.test(pwd),
+        lower: /[a-z]/.test(pwd),
+        digit: /\d/.test(pwd),
+        spec: /[^A-Za-z0-9]/.test(pwd),
+      };
+      // 1 point each rule
+      Object.keys(rules).forEach(k => { if (rules[k]) score++; });
+
+      // visuals
+      const pct = (score / 5) * 100;
+      f.bar.style.width = pct + '%';
+      let color = 'bg-red-400', label = 'Very weak';
+      if (score === 2) { color = 'bg-orange-400'; label = 'Weak'; }
+      if (score === 3) { color = 'bg-yellow-400'; label = 'Okay'; }
+      if (score === 4) { color = 'bg-emerald-400'; label = 'Good'; }
+      if (score === 5) { color = 'bg-emerald-600'; label = 'Strong'; }
+      f.bar.className = `h-2 w-[${pct}%] rounded-full ${color} transition-all`;
+      f.label.textContent = label;
+
+      // rule dots
+      Object.entries(rules).forEach(([k, ok]) => {
+        const li = f.rules[k];
+        if (!li) return;
+        const dot = li.querySelector('.rule-dot');
+        if (ok) {
+          dot.classList.remove('bg-gray-300'); dot.classList.add('bg-emerald-500');
+          li.classList.add('text-emerald-700'); li.classList.remove('text-gray-600');
+        } else {
+          dot.classList.add('bg-gray-300'); dot.classList.remove('bg-emerald-500');
+          li.classList.remove('text-emerald-700'); li.classList.add('text-gray-600');
+        }
+      });
+
+      return score;
+    }
+
+    function toggleOK(isOK, el, okIcon) {
+      // border color
+      el.classList.toggle('border-emerald-400', !!isOK);
+      el.classList.toggle('border-red-300', isOK === false);
+      // icon
+      if (okIcon) okIcon.style.display = isOK ? 'inline' : 'none';
+    }
+
+    function validateAll() {
+      const uOK = usernameOK(f.username.value);
+      const eOK = emailOK(f.email.value);
+      const mOK = mobileOK(f.mobile.value);
+      const cOK = selected(f.country);
+      const rOK = selected(f.role);
+      const s = scorePassword(f.password.value);
+      const strongEnough = s >= 3; // require at least "Okay"
+      const match = f.password.value && f.password.value === f.confirm.value;
+
+      toggleOK(uOK, f.username, f.usernameOk);
+      toggleOK(eOK, f.email, f.emailOk);
+      toggleOK(mOK, f.mobile, f.mobileOk);
+
+      // confirm message
+      f.matchMsg.textContent = match ? 'Passwords match' : (f.confirm.value ? 'Passwords do not match' : '');
+      f.matchMsg.className = 'mt-1 text-xs ' + (match ? 'text-emerald-700' : 'text-red-600');
+
+      const formOK = uOK && eOK && mOK && cOK && rOK && strongEnough && match;
+      f.submit.disabled = !formOK;
+      return formOK;
+    }
+
+    // listeners
+    ['input', 'change'].forEach(ev => {
+      f.username.addEventListener(ev, validateAll);
+      f.email.addEventListener(ev, validateAll);
+      f.mobile.addEventListener(ev, validateAll);
+      f.country.addEventListener(ev, validateAll);
+      f.role.addEventListener(ev, validateAll);
+      f.password.addEventListener(ev, validateAll);
+      f.confirm.addEventListener(ev, validateAll);
+    });
+
+    // Show/Hide toggles
+    const toggle = (btnId, input) => {
+      const btn = document.getElementById(btnId);
+      btn?.addEventListener('click', () => {
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.textContent = show ? 'Hide' : 'Show';
+      });
+    };
+    toggle('togglePwd', f.password);
+    toggle('toggleConfirm', f.confirm);
+
+    // initialize
+    validateAll();
+  </script>
+
+  <!-- small buttons text fix (added toggles) -->
+  <script>
+    // inject toggle buttons if missing (in case Jinja removes attrs)
+    if (!document.getElementById('togglePwd')) {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.id = 'togglePwd';
+      btn.className = 'absolute right-2 top-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100';
+      btn.textContent = 'Show';
+      document.querySelector('#password')?.parentElement.appendChild(btn);
+      btn.addEventListener('click', () => {
+        const pw = document.getElementById('password');
+        const show = pw.type === 'password'; pw.type = show ? 'text' : 'password';
+        btn.textContent = show ? 'Hide' : 'Show';
+      });
+    }
+    if (!document.getElementById('toggleConfirm')) {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.id = 'toggleConfirm';
+      btn.className = 'absolute right-2 top-2 rounded-md px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-100';
+      btn.textContent = 'Show';
+      document.querySelector('#confirm_password')?.parentElement.appendChild(btn);
+      btn.addEventListener('click', () => {
+        const pw = document.getElementById('confirm_password');
+        const show = pw.type === 'password'; pw.type = show ? 'text' : 'password';
+        btn.textContent = show ? 'Hide' : 'Show';
+      });
+    }
+  </script>
+</body>
+</html>

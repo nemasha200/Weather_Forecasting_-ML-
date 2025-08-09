@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>Saved Forecasts</title></head>
+<body>
+    <h2>📄 Saved Forecasts</h2>
+    <ul>
+        {% for item in forecasts %}
+            <li>{{ item.date }}: {{ item.temp }}°C, {{ item.humidity }}% humidity</li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('user_dashboard_alt') }}">← Back</a>
+</body>
+</html>

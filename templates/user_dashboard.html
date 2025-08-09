@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <title>Weather Prediction Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: url('/static/predict.jpg') no-repeat center center fixed;
+      background-size: cover;
+    }
+    body::before {
+      content: "";
+      position: fixed; inset: 0;
+      background: rgba(255,255,255,.45);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      z-index: -1;
+    }
+    /* fun but light animations */
+    .sun {
+      position: fixed; right: 5%; top: 80px; width: 90px; height: 90px; border-radius: 50%;
+      background: radial-gradient(circle, #fff8b5, #ffca28);
+      box-shadow: 0 0 60px 20px rgba(255,202,40,.35);
+      animation: pulseSun 5s ease-in-out infinite;
+      pointer-events: none; z-index: 0;
+    }
+    @keyframes pulseSun { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.06);opacity:.95} }
+    @keyframes moveClouds {
+      0% { transform: translateX(-280px); opacity: .18; }
+      50% { opacity: .45; }
+      100% { transform: translateX(120vw); opacity: .18; }
+    }
+    .cloud {
+      position: fixed; background: url('animation.png') no-repeat;
+      background-size: contain; width: 200px; height: 100px;
+      animation: moveClouds linear infinite; z-index: 0; pointer-events: none;
+    }
+    .cloud1 { top: 12%; left: -280px; animation-duration: 75s; }
+    .cloud2 { top: 28%; left: -360px; animation-duration: 95s; }
+    .cloud3 { top: 52%; left: -300px; animation-duration: 85s; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-900">
+  <!-- Ambient deco -->
+  <div class="sun" aria-hidden="true"></div>
+  <div class="cloud cloud1" aria-hidden="true"></div>
+  <div class="cloud cloud2" aria-hidden="true"></div>
+  <div class="cloud cloud3" aria-hidden="true"></div>
+
+  <!-- Top bar -->
+  <nav class="bg-blue-900/90 text-white">
+    <div class="mx-auto max-w-7xl px-4 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div class="flex items-center gap-3">
+        <div class="size-8 rounded-xl bg-white/20 grid place-items-center">🌤</div>
+        <h1 class="text-xl font-bold">Weather Prediction Dashboard</h1>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <a href="/about" class="px-3 py-1.5 rounded-lg hover:bg-white/10">About</a>
+        <a href="/contact" class="px-3 py-1.5 rounded-lg hover:bg-white/10">Contact</a>
+        <a href="/historical-trends" class="px-3 py-1.5 rounded-lg hover:bg-white/10">Historical Trends</a>
+        <a href="/agriculture-tips" class="px-3 py-1.5 rounded-lg hover:bg-white/10">Agriculture Tips</a>
+        <a href="/business-planning" class="px-3 py-1.5 rounded-lg hover:bg-white/10">Business Planning</a>
+        <a href="{{ url_for('show_users') }}" class="px-3 py-1.5 rounded-lg hover:bg-white/10">View Registered Users</a>
+        <a href="{{ url_for('logout') }}" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="flex-1">
+    <div class="mx-auto max-w-7xl p-4 md:p-8 space-y-6 relative z-10">
+      <!-- Actions row -->
+      <div class="flex flex-col md:flex-row md:items-end gap-4">
+        <!-- City form -->
+        <form method="POST" class="glass p-4 rounded-2xl shadow-lg bg-white/70 w-full md:w-auto">
+          <label for="city" class="block text-sm font-medium text-slate-700 mb-1">Choose a city</label>
+          <div class="flex items-center gap-3">
+            <select id="city" name="city" class="rounded-xl border-slate-300 focus:ring-2 focus:ring-blue-500">
+              <option value="Colombo" {% if request.form.city == 'Colombo' %}selected{% endif %}>Colombo</option>
+              <option value="Kandy" {% if request.form.city == 'Kandy' %}selected{% endif %}>Kandy</option>
+              <option value="Galle" {% if request.form.city == 'Galle' %}selected{% endif %}>Galle</option>
+              <option value="Jaffna" {% if request.form.city == 'Jaffna' %}selected{% endif %}>Jaffna</option>
+            </select>
+            <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-500">
+              📈 Get Forecast
+            </button>
+          </div>
+        </form>
+
+        <!-- Predict 7-Day (uses same city) -->
+        <form method="POST" class="glass p-4 rounded-2xl shadow-lg bg-white/70 w-full md:w-auto">
+          <input type="hidden" name="city" value="{{ request.form.city or 'Colombo' }}">
+          <button type="submit" name="predict" value="true" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-white font-semibold hover:bg-emerald-500">
+            🔮 Predict 7-Day
+          </button>
+        </form>
+
+        <!-- Saved forecasts quick link -->
+        <a href="{{ url_for('view_db') }}" class="glass p-4 rounded-2xl shadow-lg bg-white/70 w-full md:w-auto inline-flex items-center justify-center gap-2 hover:bg-white/80">
+          📄 View Saved Forecasts
+        </a>
+      </div>
+
+      <!-- Error banner -->
+      {% if error %}
+      <div class="rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3">
+        {{ error }}
+      </div>
+      {% endif %}
+
+      <!-- KPIs -->
+      <section aria-labelledby="today-title" class="space-y-3">
+        <h2 id="today-title" class="text-2xl font-bold">Today’s Weather Snapshot</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="rounded-2xl shadow-lg bg-white/70 p-5">
+            <p class="text-sm text-slate-600">🌡 Temperature</p>
+            <p id="kpi-temp" class="text-2xl font-bold mt-1">-- °C</p>
+          </div>
+          <div class="rounded-2xl shadow-lg bg-white/70 p-5">
+            <p class="text-sm text-slate-600">🌧 Rainfall</p>
+            <p id="kpi-rain" class="text-2xl font-bold mt-1">-- mm</p>
+          </div>
+          <div class="rounded-2xl shadow-lg bg-white/70 p-5">
+            <p class="text-sm text-slate-600">💧 Humidity</p>
+            <p id="kpi-humidity" class="text-2xl font-bold mt-1">-- %</p>
+          </div>
+          <div class="rounded-2xl shadow-lg bg-white/70 p-5">
+            <p class="text-sm text-slate-600">🌬 Wind Speed</p>
+            <p id="kpi-wind" class="text-2xl font-bold mt-1">-- km/h</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Current weather (if provided by Flask) -->
+      {% if current_weather %}
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-2xl shadow-lg bg-white/70 p-6">
+          <h3 class="text-lg font-semibold flex items-center gap-2">🌡 Current Weather</h3>
+          <ul class="mt-2 space-y-1 text-slate-700">
+            <li><strong>Date:</strong> {{ today }}</li>
+            <li><strong>Temperature:</strong> {{ current_weather.temp }} °C</li>
+            <li><strong>Humidity:</strong> {{ current_weather.humidity }} %</li>
+            <li><strong>Pressure:</strong> {{ current_weather.pressure }} hPa</li>
+            <li><strong>Wind Speed:</strong> {{ current_weather.wind }} m/s</li>
+            <li><strong>Condition:</strong> {{ current_weather.condition }}</li>
+          </ul>
+        </div>
+
+        {% if tomorrow %}
+        <div class="rounded-2xl shadow-lg bg-white/70 p-6">
+          <h3 class="text-lg font-semibold flex items-center gap-2">⭐ Tomorrow’s Prediction</h3>
+          <ul class="mt-2 space-y-1 text-slate-700">
+            <li><strong>Date:</strong> {{ tomorrow.date }}</li>
+            <li><strong>Predicted Temp:</strong> {{ tomorrow.temp }} °C</li>
+            <li><strong>Comment:</strong> {{ tomorrow.comment }}</li>
+          </ul>
+        </div>
+        {% endif %}
+      </section>
+      {% endif %}
+
+      <!-- Forecast area -->
+      {% if forecast and forecast_dates %}
+      <section class="rounded-2xl shadow-lg bg-white/80 p-6">
+        <div class="flex items-center gap-4 border-b border-slate-200 pb-3 mb-4">
+          <button id="tab-chart" class="tab-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-semibold">Chart</button>
+          <button id="tab-table" class="tab-btn px-3 py-1.5 rounded-lg hover:bg-slate-100">Table</button>
+        </div>
+
+        <!-- Chart -->
+        <div id="panel-chart">
+          <canvas id="forecastChart" height="120"></canvas>
+        </div>
+
+        <!-- Table -->
+        <div id="panel-table" class="hidden overflow-x-auto">
+          <table class="min-w-full border border-slate-200 rounded-lg">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="text-left px-3 py-2 border-b">Date</th>
+                <th class="text-left px-3 py-2 border-b">Predicted Temp (°C)</th>
+                <th class="text-left px-3 py-2 border-b">Forecast Comment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for temp, comment, date in zipped %}
+              <tr class="odd:bg-white even:bg-slate-50">
+                <td class="px-3 py-2 border-b">{{ date }}</td>
+                <td class="px-3 py-2 border-b">{{ temp }}</td>
+                <td class="px-3 py-2 border-b">{{ comment }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <script>
+        // Flask-provided data
+        const forecastTemps = JSON.parse('{{ forecast | tojson | safe }}');
+        const forecastDates = JSON.parse('{{ forecast_dates | tojson | safe }}');
+
+        const ctx = document.getElementById('forecastChart').getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: forecastDates,
+            datasets: [
+              {
+                label: 'Predicted Temperature (°C)',
+                data: forecastTemps,
+                borderColor: 'rgb(37, 99, 235)',
+                backgroundColor: 'rgba(37, 99, 235, .15)',
+                tension: .35,
+                pointRadius: 3,
+                fill: true
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: true } },
+            scales: {
+              y: { beginAtZero: false, title: { display: true, text: '°C' } },
+              x: { title: { display: true, text: 'Date' } }
+            }
+          }
+        });
+
+        // Simple tabs
+        const tabChart = document.getElementById('tab-chart');
+        const tabTable = document.getElementById('tab-table');
+        const panelChart = document.getElementById('panel-chart');
+        const panelTable = document.getElementById('panel-table');
+
+        function activate(which) {
+          if (which === 'chart') {
+            panelChart.classList.remove('hidden');
+            panelTable.classList.add('hidden');
+            tabChart.classList.add('bg-blue-600','text-white');
+            tabTable.classList.remove('bg-blue-600','text-white');
+          } else {
+            panelTable.classList.remove('hidden');
+            panelChart.classList.add('hidden');
+            tabTable.classList.add('bg-blue-600','text-white');
+            tabChart.classList.remove('bg-blue-600','text-white');
+          }
+        }
+        tabChart.addEventListener('click', () => activate('chart'));
+        tabTable.addEventListener('click', () => activate('table'));
+      </script>
+      {% endif %}
+
+      <!-- If Flask didn’t provide data, auto-fetch from /api/weather to populate KPIs + mini chart -->
+      {% if not forecast or not forecast_dates %}
+      <section class="rounded-2xl shadow-lg bg-white/80 p-6">
+        <h2 class="text-lg font-semibold">7-Day Forecast</h2>
+        <canvas id="apiForecastChart" height="120" class="mt-4"></canvas>
+      </section>
+      <script>
+        (async () => {
+          try {
+            const res = await fetch('/api/weather');
+            const data = await res.json();
+
+            // KPIs
+            const el = (id, v) => document.getElementById(id) && (document.getElementById(id).textContent = v);
+            el('kpi-temp', `${data.temperature} °C`);
+            el('kpi-rain', `${data.rainfall} mm`);
+            el('kpi-humidity', `${data.humidity} %`);
+            el('kpi-wind', `${data.wind_speed} km/h`);
+
+            // Chart
+            const ctx2 = document.getElementById('apiForecastChart').getContext('2d');
+            new Chart(ctx2, {
+              type: 'line',
+              data: {
+                labels: data.forecast.days,
+                datasets: [
+                  {
+                    label: 'Temperature (°C)',
+                    data: data.forecast.temperature,
+                    borderColor: 'rgb(37, 99, 235)',
+                    backgroundColor: 'rgba(37, 99, 235, .15)',
+                    tension: .35,
+                    pointRadius: 3,
+                    fill: true
+                  },
+                  {
+                    label: 'Rainfall (mm)',
+                    data: data.forecast.rainfall,
+                    borderColor: 'rgb(16, 185, 129)',
+                    borderDash: [6, 6],
+                    pointRadius: 0,
+                    fill: false
+                  }
+                ]
+              },
+              options: { responsive: true }
+            });
+          } catch (e) {
+            console.error(e);
+            // show a soft error toast
+            const toast = document.createElement('div');
+            toast.className = "fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-xl shadow-lg";
+            toast.innerText = "Couldn’t load live weather. Please try again.";
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+          }
+        })();
+      </script>
+      {% endif %}
+    </div>
+  </main>
+
+  <footer class="bg-blue-900/90 text-white text-center p-4 mt-8">
+    &copy; 2025 Weather Dashboard for Agriculture and Business
+  </footer>
+</body>
+</html>

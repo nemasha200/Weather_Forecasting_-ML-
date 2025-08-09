@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <title>Weather Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind + Chart.js -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Preload the background for snappy paint -->
+  <link rel="preload" as="image" href="{{ url_for('static', filename='static/blue.jpg') }}">
+
+  <style>
+
+    :root {
+      /* overlay + card styling tweaks can be tuned from Admin */
+      --overlay: rgba(255,255,255,0.60);
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --brand: #2563eb;
+      --accent: #10b981;
+      --text: #334155;
+    }
+
+    .day-card {
+    background: rgba(255,255,255,.8);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: .75rem;
+    display: flex; flex-direction: column; align-items: center; gap: .25rem;
+    box-shadow: 0 6px 16px rgba(0,0,0,.06);
+  }
+  .theme-dark .day-card { background: rgba(15,23,42,.6); border-color: #1f2937; }
+  .day-card .day { font-weight: 700; font-size: .95rem; }
+  .day-card .tmax { font-weight: 700; color: var(--brand); }
+  .day-card .tmin { opacity:.8; }
+  .day-card .meta { font-size: .75rem; opacity:.85; text-align:center; line-height:1.1; }
+  .ml-chip { font-size:.65rem; padding:.1rem .4rem; border-radius:.4rem; background: #e0f2fe; color:#0369a1; }
+    
+
+    /* Dark theme flips */
+    .theme-dark {
+      --overlay: rgba(0,0,0,0.45);
+      --card-bg: #0b1220;
+      --card-border: #1f2937;
+      --brand: #60a5fa;
+      --accent: #34d399;
+      --text: #cbd5e1;
+    }
+
+    body {
+      background: url('/static/aws.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+    /* Soft overlay for readability */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: var(--overlay);
+      z-index: -1;
+      transition: background .3s ease;
+    }
+    .weather-card {
+  background: linear-gradient(135deg, #9aa1a4aa 0%, #2eacc24d 100%);
+  border: 1px solid #2d4259e6; /* soft golden border */
+  box-shadow: 0 8px 20px rgba(158, 158, 156, 0.71);
+  border-radius: 16px;
+  padding: 1.25rem;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.weather-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(217, 216, 213, 0.81);
+}
+
+    .glass {
+      background: color-mix(in hsl, var(--card-bg) 85%, transparent);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+    .glass:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(0,0,0,.10); }
+
+    .main-header { font-size: clamp(1.6rem, 2.2vw, 2.4rem); font-weight: 700; color: var(--brand); }
+
+    .header-link { color: #64748b; font-weight: 500; transition: color .2s; }
+    .header-link:hover { color: var(--brand); text-decoration: underline; }
+
+    /* Admin drawer */
+    .drawer {
+      position: fixed; top: 0; right: 0; height: 100vh; width: 370px; max-width: 90vw;
+      transform: translateX(100%); transition: transform .3s ease;
+      z-index: 60; background: var(--card-bg); border-left: 1px solid var(--card-border);
+      box-shadow: -10px 0 30px rgba(0,0,0,.18);
+    }
+    .drawer.open { transform: translateX(0); }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <!-- Navbar -->
+<nav class="glass mx-4 md:mx-8 mt-4 p-4 md:p-6 flex flex-col md:flex-row md:justify-between md:items-center bg-black-500">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl bg-blue-600/90 flex items-center justify-center text-white font-bold shadow-md">WX</div>
+      <h1 class="text-xl md:text-2xl font-extrabold" style="color: var(--brand)">Weather Prediction Dashboard</h1>
+      <span class="ml-3 text-xs md:text-sm px-2 py-1 rounded-full bg-black/5 dark:bg-white/5">v1.2</span>
+    </div>
+    <div class="flex items-center gap-5 mt-4 md:mt-0">
+      <a href="/about" class="header-link">About</a>
+      <a href="/contact" class="header-link">Contact</a>
+      <a href="/historical-trends" class="header-link">Historical Trends</a>
+      <a href="/agriculture-tips" class="header-link">Agriculture Tips</a>
+      <a href="/business-planning" class="header-link">Business Planning</a>
+      <a href="{{ url_for('show_users') }}" class="header-link">Registered Users</a>
+      <a href="{{ url_for('login') }}" class="header-link">Logout</a>
+
+      <!-- Admin button -->
+      <button id="openAdmin" class="ml-1 px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold shadow hover:shadow-md active:scale-[.98]">
+        Admin Control
+      </button>
+    </div>
+  </nav>
+
+    <main class="p-6 md:p-10 space-y-8 flex-grow">
+    <div class="flex items-end justify-between">
+      <h2 class="main-header">Today’s Weather Prediction</h2>
+      <div class="text-sm opacity-80">
+        <span id="locLabel" class="font-bold text-lg" style="color: var(--brand);">Colombo</span> <!-- Bold Location -->
+        <span id="dateLabel" class="font-medium text-sm text-gray-600 ml-2"> <!-- Today's Date -->
+          <script>
+            const date = new Date();
+            const formattedDate = date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            document.getElementById('dateLabel').textContent = formattedDate;
+          </script>
+        </span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="weather-card">
+        <p class="text-sm">🌡 Temperature</p>
+        <p id="temperature" class="text-2xl font-semibold" style="color: var(--brand)">-- °C</p>
+      </div>
+      <div class="weather-card">
+        <p class="text-sm">🌧 Rainfall</p>
+        <p id="rainfall" class="text-2xl font-semibold" style="color: var(--brand)">-- mm</p>
+      </div>
+      <div class="weather-card">
+        <p class="text-sm">💧 Humidity</p>
+        <p id="humidity" class="text-2xl font-semibold" style="color: var(--brand)">-- %</p>
+      </div>
+      <div class="weather-card">
+        <p class="text-sm">🌬 Wind Speed</p>
+        <p id="wind_speed" class="text-2xl font-semibold" style="color: var(--brand)">-- km/h</p>
+      </div>
+    </div>
+
+    <!-- Forecast Card -->
+<div class="glass p-6 md:p-8">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-xl md:text-2xl font-bold">7-Day Forecast</h2>
+    <div class="flex items-center gap-4">
+      
+      <div class="text-xs opacity-75">Powered by OpenWeather</div>
+    </div>
+  </div>
+
+
+<!-- Tomorrow's Weather Prediction -->
+<div id="tomorrowPrediction" class="hidden bg-white p-4 rounded-lg shadow-md">
+  <h3 class="text-xl font-semibold">Tomorrow's Weather</h3>
+  <p id="tomorrowTemp">-- °C</p>
+  <p id="tomorrowComment">--</p>
+</div>
+
+<!-- 7-Day Forecast -->
+<div id="sevenDayForecast" class="hidden mt-6">
+  <h3 class="text-xl font-semibold mb-2">7-Day Forecast</h3>
+  <div id="forecastDays" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3"></div>
+</div>
+
+
+  <!-- Get Prediction Button (Dark Green) -->
+<div class="flex justify-center mb-4">
+  <button id="getPredBtn" class="px-6 py-2 rounded-lg bg-green-800 text-white font-semibold shadow-lg hover:bg-green-700 active:scale-95 transition duration-200">
+    Get Prediction
+  </button>
+</div>
+
+<!-- Tomorrow highlight (appears after click) -->
+<div id="tomorrowBox" class="hidden mx-auto max-w-xl mb-4 glass p-4 rounded-xl">
+  <div class="flex items-center justify-between">
+    <div class="text-lg font-semibold">⭐ Tomorrow</div>
+    <div id="tomorrowDate" class="text-sm opacity-75"></div>
+  </div>
+  <div class="mt-2 text-sm">
+    <span id="tomorrowTemp" class="font-bold"></span>
+    <span id="tomorrowExtra" class="opacity-80"></span>
+  </div>
+</div>
+
+  
+
+  <!-- Mixed chart -->
+  <canvas id="forecastChart" height="110"></canvas>
+
+  <!-- Daily boxes -->
+  <div id="dailyBoxes" class="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3"></div>
+</div>
+
+  </main>
+
+
+  <!-- Admin Drawer -->
+  <aside id="adminDrawer" class="drawer">
+    <div class="h-full flex flex-col">
+      <div class="p-5 border-b" style="border-color: var(--card-border)">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold">Admin Control</h3>
+          <button id="closeAdmin" class="p-2 rounded-lg hover:bg-black/5">✕</button>
+        </div>
+        <p class="text-xs mt-1 opacity-70">Manage keys, city, units & theme. Values persist locally.</p>
+      </div>
+
+      <div class="p-5 space-y-5 overflow-y-auto">
+        <div>
+          <label class="text-sm font-medium">OpenWeather API Key</label>
+          <input id="apiKey" type="password" class="mt-2 w-full rounded-xl border px-3 py-2 outline-none focus:ring"
+                 placeholder="Enter your API key">
+          <label class="mt-2 flex items-center gap-2 text-xs opacity-80">
+            <input id="showKey" type="checkbox"> Show key
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-medium">City (fallback)</label>
+            <input id="city" type="text" class="mt-2 w-full rounded-xl border px-3 py-2"
+                   placeholder="Colombo">
+          </div>
+          <div>
+            <label class="text-sm font-medium">Units</label>
+            <select id="units" class="mt-2 w-full rounded-xl border px-3 py-2">
+              <option value="metric">Metric (°C, m/s)</option>
+              <option value="imperial">Imperial (°F, mph)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-medium">Latitude</label>
+            <input id="lat" type="number" step="0.0001" class="mt-2 w-full rounded-xl border px-3 py-2" placeholder="6.9271">
+          </div>
+          <div>
+            <label class="text-sm font-medium">Longitude</label>
+            <input id="lon" type="number" step="0.0001" class="mt-2 w-full rounded-xl border px-3 py-2" placeholder="79.8612">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-sm font-medium">Theme</label>
+          <div class="mt-2 flex gap-3">
+            <button data-theme="light" class="themeBtn px-3 py-2 rounded-lg border">Light</button>
+            <button data-theme="dark" class="themeBtn px-3 py-2 rounded-lg border">Dark</button>
+          </div>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button id="saveAdmin" class="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold shadow hover:shadow-md">Save</button>
+          <button id="refreshNow" class="px-4 py-2 rounded-xl border font-semibold">Refresh Data</button>
+        </div>
+
+        <div class="pt-2">
+          <p class="text-xs opacity-70">Tip: Keep your API key on the server side in production. This panel is for local dev/demo.</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-5 right-5 hidden px-4 py-3 rounded-xl bg-black/80 text-white text-sm shadow-lg">Saved</div>
+
+  <script>
+    // -------- Settings (persisted in localStorage) --------
+    const defaults = {
+      apiKey: "",               // <-- Set on Admin panel
+      city: "Colombo",
+      lat: 6.9271,
+      lon: 79.8612,
+      units: "metric",          // metric or imperial
+      theme: "light"            // light or dark
+    };
+
+    const SETTINGS_KEY = "wx-settings-v1";
+    const getSettings = () => ({ ...defaults, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")) });
+    const saveSettings = (s) => localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+
+    // -------- UI Elements --------
+    const els = {
+      temperature: document.getElementById("temperature"),
+      rainfall: document.getElementById("rainfall"),
+      humidity: document.getElementById("humidity"),
+      wind: document.getElementById("wind_speed"),
+      locLabel: document.getElementById("locLabel"),
+      adminDrawer: document.getElementById("adminDrawer"),
+      openAdmin: document.getElementById("openAdmin"),
+      closeAdmin: document.getElementById("closeAdmin"),
+      apiKey: document.getElementById("apiKey"),
+      showKey: document.getElementById("showKey"),
+      city: document.getElementById("city"),
+      lat: document.getElementById("lat"),
+      lon: document.getElementById("lon"),
+      units: document.getElementById("units"),
+      saveAdmin: document.getElementById("saveAdmin"),
+      refreshNow: document.getElementById("refreshNow"),
+      toast: document.getElementById("toast"),
+      themeBtns: document.querySelectorAll(".themeBtn")
+    };
+
+    function showToast(msg="Saved") {
+      els.toast.textContent = msg;
+      els.toast.classList.remove("hidden");
+      setTimeout(() => els.toast.classList.add("hidden"), 1600);
+    }
+
+    function applyTheme(theme) {
+      if (theme === "dark") document.documentElement.classList.add("theme-dark");
+      else document.documentElement.classList.remove("theme-dark");
+    }
+
+    // -------- Chart handle --------
+    let forecastChart;
+    function drawChart(labels, temps, rains) {
+      const ctx = document.getElementById('forecastChart').getContext('2d');
+      if (forecastChart) forecastChart.destroy();
+      forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Temperature',
+              data: temps,
+              borderColor: getComputedStyle(document.documentElement).getPropertyValue('--brand').trim(),
+              backgroundColor: 'transparent',
+              tension: .35,
+              pointRadius: 4
+            },
+            {
+              label: 'Rainfall (mm)',
+              data: rains,
+              borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+              backgroundColor: 'transparent',
+              borderDash: [6, 6],
+              tension: .35,
+              pointRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: true },
+            tooltip: { enabled: true }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: false }
+          }
+        }
+      });
+    }
+
+    // -------- Data fetchers --------
+    async function fetchToday(s) {
+      if (!s.apiKey) return;
+      const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(s.city)}&appid=${s.apiKey}&units=${s.units}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      // OpenWeather wind is m/s (metric). Convert to km/h for display when metric.
+      const windMs = data.wind?.speed ?? 0;
+      const windDisplay = s.units === 'metric' ? (windMs * 3.6) : windMs; // mph returned for imperial
+
+      els.temperature.textContent = `${Math.round(data.main?.temp ?? 0)} ${s.units === 'metric' ? '°C' : '°F'}`;
+      els.rainfall.textContent   = `${(data.rain?.["1h"] ?? data.rain?.["3h"] ?? 0)} mm`;
+      els.humidity.textContent   = `${data.main?.humidity ?? '--'} %`;
+      els.wind.textContent       = `${Math.round(windDisplay)} ${s.units === 'metric' ? 'km/h' : 'mph'}`;
+    }
+
+    async function fetchForecast(s) {
+      if (!s.apiKey) return;
+      const url = `https://api.openweathermap.org/data/2.5/onecall?lat=${s.lat}&lon=${s.lon}&exclude=current,minutely,hourly,alerts&appid=${s.apiKey}&units=${s.units}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      const labels = data.daily.map(d => new Date(d.dt * 1000).toLocaleDateString());
+      const temps  = data.daily.map(d => d.temp?.day ?? 0);
+      const rains  = data.daily.map(d => d.rain ?? 0);
+
+      drawChart(labels, temps, rains);
+    }
+
+    async function refreshAll() {
+      const s = getSettings();
+      applyTheme(s.theme);
+      els.locLabel.textContent = s.city;
+      await Promise.all([fetchToday(s), fetchForecast(s)]);
+    }
+
+    // -------- Admin Drawer events --------
+    els.openAdmin.addEventListener('click', () => {
+      const s = getSettings();
+      els.apiKey.value = s.apiKey;
+      els.city.value = s.city;
+      els.lat.value = s.lat;
+      els.lon.value = s.lon;
+      els.units.value = s.units;
+      els.adminDrawer.classList.add('open');
+    });
+    els.closeAdmin.addEventListener('click', () => els.adminDrawer.classList.remove('open'));
+    els.refreshNow.addEventListener('click', () => { refreshAll(); showToast('Data refreshed'); });
+
+    els.showKey.addEventListener('change', (e) => {
+      els.apiKey.type = e.target.checked ? 'text' : 'password';
+    });
+
+    els.themeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const s = getSettings();
+        s.theme = btn.dataset.theme;
+        saveSettings(s);
+        applyTheme(s.theme);
+        showToast('Theme updated');
+      });
+    });
+
+    els.saveAdmin.addEventListener('click', () => {
+      const s = getSettings();
+      s.apiKey = els.apiKey.value.trim();
+      s.city   = els.city.value.trim() || "Colombo";
+      s.lat    = parseFloat(els.lat.value) || defaults.lat;
+      s.lon    = parseFloat(els.lon.value) || defaults.lon;
+      s.units  = els.units.value;
+      saveSettings(s);
+      els.adminDrawer.classList.remove('open');
+      refreshAll();
+      showToast('Settings saved');
+    });
+
+    // -------- Init --------
+    (function init() {
+      const s = getSettings();
+      applyTheme(s.theme);
+      refreshAll();
+
+      // Optional: open admin on first run if no key
+      if (!s.apiKey) setTimeout(() => els.adminDrawer.classList.add('open'), 600);
+    })();
+
+
+  
+  // Function to handle button click and display predictions
+  document.getElementById('getPrediction').addEventListener('click', async function() {
+    // Fetch predictions for tomorrow and 7-day forecast
+    try {
+      const response = await fetch('/api/predict-7d'); // Adjust API endpoint if needed
+      const data = await response.json();
+
+      if (data.ok) {
+        // Show tomorrow's prediction
+        const tomorrow = data.data[0]; // Assuming tomorrow's prediction is the first item
+        document.getElementById('tomorrowPrediction').classList.remove('hidden');
+        document.getElementById('tomorrowTemp').textContent = `${tomorrow.tmax}°C / ${tomorrow.tmin}°C`;
+        document.getElementById('tomorrowComment').textContent = `Comment: ${tomorrow.comment || 'No comment available'}`;
+
+        // Show 7-day forecast
+        const forecastDays = document.getElementById('forecastDays');
+        forecastDays.innerHTML = ''; // Clear existing forecast
+        data.data.forEach((forecast, index) => {
+          const day = document.createElement('div');
+          day.classList.add('day-card');
+          day.innerHTML = `
+            <div class="day">${forecast.date}</div>
+            <div>${forecast.tmax}° / ${forecast.tmin}°</div>
+            <div>${forecast.rain} mm</div>
+            <div>${forecast.wind} km/h</div>
+            <div>${forecast.humidity} %</div>
+          `;
+          forecastDays.appendChild(day);
+        });
+
+        document.getElementById('sevenDayForecast').classList.remove('hidden');
+      } else {
+        throw new Error(data.error || 'Prediction failed');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error fetching predictions.');
+    }
+  });
+
+  
+function drawChart(labels, ow, ml, showML) {
+  const brand  = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim();
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+
+  const ctx = document.getElementById('forecastChart').getContext('2d');
+  if (forecastChart) forecastChart.destroy();
+
+  const datasets = [
+    // OpenWeather rain bars (right axis)
+    {
+      type: 'bar',
+      label: 'Rain (mm)',
+      data: ow.rain,
+      yAxisID: 'y1',
+      backgroundColor: accent,
+      borderColor: accent,
+      borderWidth: 1,
+      borderRadius: 6,
+      barPercentage: 0.55,
+      categoryPercentage: 0.7
+    },
+    // OpenWeather Max/Min
+    {
+      type: 'line',
+      label: 'Max Temp',
+      data: ow.tMax,
+      yAxisID: 'y',
+      borderColor: brand,
+      backgroundColor: 'transparent',
+      tension: .35,
+      pointRadius: 3
+    },
+    {
+      type: 'line',
+      label: 'Min Temp',
+      data: ow.tMin,
+      yAxisID: 'y',
+      borderColor: brand + '55',
+      backgroundColor: brand + '20',
+      tension: .35,
+      pointRadius: 3,
+      fill: '-1'
+    }
+  ];
+
+  if (showML && ml) {
+    datasets.push(
+      {
+        type: 'line',
+        label: 'ML Max Temp',
+        data: ml.tMax,
+        yAxisID: 'y',
+        borderColor: '#ef4444',     // red
+        backgroundColor: 'transparent',
+        borderDash: [6, 4],
+        tension: .35,
+        pointRadius: 3
+      },
+      {
+        type: 'line',
+        label: 'ML Min Temp',
+        data: ml.tMin,
+        yAxisID: 'y',
+        borderColor: '#ef444477',
+        backgroundColor: '#ef444420',
+        borderDash: [6, 4],
+        tension: .35,
+        pointRadius: 3,
+        fill: false
+      },
+      {
+        type: 'bar',
+        label: 'ML Rain (mm)',
+        data: ml.rain,
+        yAxisID: 'y1',
+        backgroundColor: '#60a5fa',  // blue
+        borderColor: '#60a5fa',
+        borderWidth: 1,
+        borderRadius: 6,
+        barPercentage: 0.35,
+        categoryPercentage: 0.5
+      }
+    );
+  }
+
+  forecastChart = new Chart(ctx, {
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true },
+        tooltip: { enabled: true }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          title: { display: true, text: 'Temperature (°)' },
+          ticks: { callback: v => `${v}°` }
+        },
+        y1: {
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: 'Rain (mm)' }
+        }
+      }
+    }
+  });
+}
+
+  
+
+
+
+function dayNameFromTs(ts) {
+  return new Date(ts * 1000).toLocaleDateString(undefined, { weekday: 'short' });
+}
+
+async function fetchForecast(s) {
+  if (!s.apiKey) return;
+
+  const owUrl = `https://api.openweathermap.org/data/2.5/onecall?lat=${s.lat}&lon=${s.lon}&exclude=current,minutely,hourly,alerts&appid=${s.apiKey}&units=${s.units}`;
+  const [owRes, mlRes] = await Promise.allSettled([
+    fetch(owUrl).then(r => r.json()),
+    fetch(`/api/predict-7d?lat=${s.lat}&lon=${s.lon}&units=${s.units}`).then(r => r.json())
+  ]);
+
+  // ---- OpenWeather parse ----
+  const owData = owRes.status === "fulfilled" ? owRes.value : { daily: [] };
+  const owDaily = (owData.daily || []).slice(0, 7);
+
+  const labels = owDaily.map(d => dayNameFromTs(d.dt));
+  const ow = {
+    tMax: owDaily.map(d => Math.round(d.temp?.max ?? 0)),
+    tMin: owDaily.map(d => Math.round(d.temp?.min ?? 0)),
+    rain: owDaily.map(d => Math.round(d.rain ?? 0)),
+    wind: owDaily.map(d => Math.round((s.units==='metric' ? (d.wind_speed * 3.6) : d.wind_speed) || 0)),
+    humidity: owDaily.map(d => Math.round(d.humidity ?? 0)),
+    icon: owDaily.map(d => (d.weather?.[0]?.icon || '01d')),
+    desc: owDaily.map(d => (d.weather?.[0]?.description || ''))
+  };
+
+  // ---- ML parse ----
+  let ml = null;
+  if (mlRes.status === "fulfilled" && mlRes.value?.ok) {
+    const m = mlRes.value.data || [];
+    // ensure same 7-day length; if not, align by index
+    ml = {
+      tMax: m.map(x => Math.round(x.tmax ?? 0)),
+      tMin: m.map(x => Math.round(x.tmin ?? 0)),
+      rain: m.map(x => Math.round(x.rain ?? 0)),
+      wind: m.map(x => Math.round(x.wind ?? 0)),
+      humidity: m.map(x => Math.round(x.humidity ?? 0)),
+      icon_hint: m.map(x => x.icon_hint || 'mild')
+    };
+  }
+
+  // draw chart with toggle state
+  const showML = document.getElementById('toggleModel')?.checked ?? false;
+  drawChart(labels, ow, ml, showML);
+
+  // build day boxes
+  const boxWrap = document.getElementById('dailyBoxes');
+  boxWrap.innerHTML = labels.map((day, i) => {
+    // OpenWeather values
+    const icon = ow.icon[i] || '01d';
+    const desc = ow.desc[i] || '';
+    const owTmax = ow.tMax[i] ?? '--';
+    const owTmin = ow.tMin[i] ?? '--';
+    const owRain = ow.rain[i] ?? 0;
+    const owWind = ow.wind[i] ?? 0;
+    const owHum  = ow.humidity[i] ?? 0;
+
+    // ML values (if present)
+    const mlT = ml ? `${ml.tMax[i] ?? '--'}° / ${ml.tMin[i] ?? '--'}°` : null;
+    const mlR = ml ? `${ml.rain[i] ?? 0} mm` : null;
+
+    return `
+      <div class="day-card">
+        <div class="day">${day}</div>
+        <img src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="${desc}" width="64" height="64" loading="lazy">
+        <div><span class="tmax">${owTmax}°</span> / <span class="tmin">${owTmin}°</span></div>
+        <div class="meta">💧 ${owRain} mm&nbsp;&nbsp;💨 ${owWind} ${s.units==='metric'?'km/h':'mph'}<br>RH ${owHum}%</div>
+        ${ml ? `<div class="meta"><span class="ml-chip">ML</span> ${mlT} · ${mlR}</div>` : ``}
+      </div>
+    `;
+  }).join('');
+
+  // re-render chart when toggle changes
+  document.getElementById('toggleModel')?.addEventListener('change', () => {
+    drawChart(labels, ow, ml, document.getElementById('toggleModel').checked);
+  }, { once: true });
+}
+</script>
+<script>
+/* --- Wire up "Get Prediction" to show Tomorrow + 7 days (ML + OW) --- */
+(function attachPredictionHandler(){
+  const btn = document.getElementById('getPredBtn');
+  if (!btn) return;
+
+  const fmtDay = (d) => d.toLocaleDateString(undefined, { weekday: 'short' });
+  const next7Labels = () => {
+    const out = [];
+    const now = new Date();
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date(now); d.setDate(now.getDate() + i);
+      out.push(fmtDay(d));
+    }
+    return out;
+  };
+
+  async function predictAndRender() {
+    const s = getSettings(); // <- already defined in your page
+    // 1) Fetch OpenWeather 7-day (if apiKey set) and ML 7-day
+    const owUrl = s.apiKey
+      ? `https://api.openweathermap.org/data/2.5/onecall?lat=${s.lat}&lon=${s.lon}&exclude=current,minutely,hourly,alerts&appid=${s.apiKey}&units=${s.units}`
+      : null;
+
+    const [owRes, mlRes] = await Promise.allSettled([
+      owUrl ? fetch(owUrl).then(r => r.json()) : Promise.resolve({ daily: [] }),
+      fetch(`/api/predict-7d?lat=${s.lat}&lon=${s.lon}&units=${s.units}`).then(r => r.json())
+    ]);
+
+    // ---- Build OW structure expected by drawChart ----
+    const owData = owRes.status === "fulfilled" ? (owRes.value || {}) : {};
+    const daily  = (owData.daily || []).slice(0, 7);
+
+    const labels = daily.length
+      ? daily.map(d => new Date(d.dt * 1000)).map(d => fmtDay(d))
+      : next7Labels();
+
+    const ow = {
+      tMax: daily.map(d => Math.round(d?.temp?.max ?? 0)),
+      tMin: daily.map(d => Math.round(d?.temp?.min ?? 0)),
+      rain: daily.map(d => Math.round(d?.rain ?? 0)),
+      wind: daily.map(d => Math.round((s.units==='metric' ? (d?.wind_speed*3.6) : (d?.wind_speed || 0)))),
+      humidity: daily.map(d => Math.round(d?.humidity ?? 0)),
+      icon: daily.map(d => (d?.weather?.[0]?.icon || '01d')),
+      desc: daily.map(d => (d?.weather?.[0]?.description || ''))
+    };
+
+    // ---- Build ML structure expected by drawChart ----
+    let ml = null;
+    if (mlRes.status === "fulfilled" && mlRes.value && mlRes.value.data) {
+      const m = mlRes.value.data;
+      ml = {
+        tMax: m.map(x => Math.round(x.tmax ?? 0)),
+        tMin: m.map(x => Math.round(x.tmin ?? 0)),
+        rain: m.map(x => Math.round(x.rain ?? 0)),
+        wind: m.map(x => Math.round(x.wind ?? 0)),
+        humidity: m.map(x => Math.round(x.humidity ?? 0))
+      };
+    }
+
+    // 2) Draw chart (use existing drawChart(labels, ow, ml, showML))
+    //    If your page defined the simple drawChart earlier, this call still works
+    //    because we pass the richer signature provided later in your file.
+    try {
+      drawChart(labels, ow, ml, true);
+    } catch (e) {
+      // If another (older) drawChart is in scope, fallback to a simple temp+rain chart
+      const temps = (ml?.tMax || ow.tMax || []).map((v, i) => Math.round((v + (ml?.tMin?.[i] ?? ow.tMin?.[i] ?? v))/2));
+      const rains = ml?.rain || ow.rain || [];
+      const ctx = document.getElementById('forecastChart').getContext('2d');
+      if (window.forecastChart) window.forecastChart.destroy();
+      window.forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [
+          { label:'Temperature', data: temps, borderColor:'#2563eb', backgroundColor:'transparent', tension:.35, pointRadius:3 },
+          { label:'Rain (mm)', data: rains, borderColor:'#10b981', backgroundColor:'transparent', borderDash:[6,6], tension:.35, pointRadius:0 }
+        ]},
+        options: { responsive:true, interaction:{mode:'index',intersect:false}, scales:{ x:{grid:{display:false}} } }
+      });
+    }
+
+    // 3) Rebuild the 7 small day boxes (same look as your current code)
+    const boxWrap = document.getElementById('dailyBoxes');
+    if (boxWrap) {
+      // Prefer OW icons/descriptions when available
+      boxWrap.innerHTML = labels.map((day, i) => {
+        const icon = ow.icon?.[i] || '01d';
+        const desc = ow.desc?.[i] || '';
+        const tMax = ml?.tMax?.[i] ?? ow.tMax?.[i] ?? '--';
+        const tMin = ml?.tMin?.[i] ?? ow.tMin?.[i] ?? '--';
+        const rain = ml?.rain?.[i] ?? ow.rain?.[i] ?? 0;
+        const wind = ml?.wind?.[i] ?? ow.wind?.[i] ?? 0;
+        const hum  = ml?.humidity?.[i] ?? ow.humidity?.[i] ?? 0;
+        return `
+          <div class="day-card">
+            <div class="day">${day}</div>
+            <img src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="${desc}" width="64" height="64" loading="lazy">
+            <div><span class="tmax">${tMax}°</span> / <span class="tmin">${tMin}°</span></div>
+            <div class="meta">💧 ${rain} mm&nbsp;&nbsp;💨 ${wind} ${s.units==='metric'?'km/h':'mph'}<br>RH ${hum}%</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 4) Show the Tomorrow highlight (index 0 of the ML series if present, else OW)
+    const tBox = document.getElementById('tomorrowBox');
+    if (tBox) {
+      const now = new Date(); now.setDate(now.getDate()+1);
+      const tmax = ml?.tMax?.[0] ?? ow.tMax?.[0] ?? '--';
+      const tmin = ml?.tMin?.[0] ?? ow.tMin?.[0] ?? '--';
+      const rain = ml?.rain?.[0] ?? ow.rain?.[0] ?? 0;
+
+      document.getElementById('tomorrowDate').textContent =
+        now.toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' });
+      document.getElementById('tomorrowTemp').textContent = `${tmax}° / ${tmin}°`;
+      document.getElementById('tomorrowExtra').textContent = ` · Rain ~ ${rain} mm`;
+      tBox.classList.remove('hidden');
+    }
+  }
+
+  btn.addEventListener('click', predictAndRender);
+})();
+</script>
+
+
+</body>
+</html>  

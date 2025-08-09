@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Users</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-green-50 text-gray-900">
+  <div class="mx-auto max-w-7xl px-4 py-8">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">Registered Users</h1>
+        <p class="mt-1 text-sm text-gray-500">Manage all user accounts in one place.</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('export_excel') }}"
+           class="inline-flex items-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-gray-50">
+          <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7v10m8-10v10M4 17h16M4 7h16M4 12h16"/>
+          </svg>
+          Export CSV
+        </a>
+        <a href="{{ url_for('export_pdf') }}"
+           class="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
+          <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M6 19h12"/>
+          </svg>
+          Export PDF
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="relative w-full sm:w-80">
+        <input id="searchInput"
+               type="text"
+               placeholder="Search by username or email..."
+               class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 pl-10 text-sm outline-none ring-0 focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
+        <svg class="pointer-events-none absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
+        </svg>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <select id="roleFilter"
+                class="rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+          <option value="">All roles</option>
+          <option value="admin">Admin</option>
+          <option value="user">User</option>
+        </select>
+
+        <a href="{{ url_for('protected_dashboard') }}"
+           class="inline-flex items-center rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-gray-50">
+          ← Back
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-left text-sm">
+          <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+            <tr>
+              <th class="px-4 py-3">ID</th>
+              <th class="px-4 py-3">Username</th>
+              <th class="px-4 py-3">Email</th>
+              <th class="px-4 py-3">Role</th>
+              <th class="px-4 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody" class="divide-y divide-gray-100">
+            {% for u in users %}
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-4 py-3 font-medium text-gray-700">{{ u.id }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                    {{ (u.username or '?')[:1] | upper }}
+                  </div>
+                  <div class="leading-tight">
+                    <div class="font-semibold text-gray-800">{{ u.username }}</div>
+                    <div class="text-xs text-gray-500">#{{ '%05d' % (u.id or 0) }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-gray-700">
+                {{ u.email if u.email else '—' }}
+              </td>
+              <td class="px-4 py-3">
+                {% set role = (u.role or 'user')|lower %}
+                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
+                  {% if role == 'admin' %} bg-red-50 text-red-700 ring-1 ring-inset ring-red-200
+                  {% else %} bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 {% endif %}">
+                  {{ role|capitalize }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-2">
+                  <!-- Edit -->
+                  <a href="{{ url_for('edit_user', user_id=u.id) }}"
+                     class="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.86 3.94l3.2 3.2M4 20h4l10.6-10.6a2.26 2.26 0 0 0 0-3.2l-1.8-1.8a2.26 2.26 0 0 0-3.2 0L4 15.99V20z"/>
+                    </svg>
+                    Edit
+                  </a>
+
+                  <!-- Delete (GET with confirm; your route allows GET/POST) -->
+                  <a href="{{ url_for('delete_user', user_id=u.id) }}"
+                     onclick="return confirm('Delete user {{ u.username }}? This action cannot be undone.');"
+                     class="inline-flex items-center gap-1 rounded-xl bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200 hover:bg-red-100">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5-3h4m-7 3h10M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    Delete
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between px-4 py-3 text-xs text-gray-500">
+        <div>Total: <span class="font-semibold">{{ users|length }}</span> users</div>
+        <div class="italic">Updated {{ (namespace().now if false) or '' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const roleFilter  = document.getElementById('roleFilter');
+    const tbody       = document.getElementById('userTableBody');
+
+    function normalize(t){ return (t || '').toString().toLowerCase(); }
+
+    function applyFilters(){
+      const q = normalize(searchInput.value);
+      const role = normalize(roleFilter.value);
+
+      [...tbody.rows].forEach(row => {
+        const id    = normalize(row.cells[0]?.innerText);
+        const user  = normalize(row.cells[1]?.innerText);
+        const email = normalize(row.cells[2]?.innerText);
+        const rtxt  = normalize(row.cells[3]?.innerText);
+        const matchesText = !q || id.includes(q) || user.includes(q) || email.includes(q);
+        const matchesRole = !role || rtxt === role;
+        row.style.display = (matchesText && matchesRole) ? '' : 'none';
+      });
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+    roleFilter.addEventListener('change', applyFilters);
+  </script>
+</body>
+</html>

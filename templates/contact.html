@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Contact</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <nav class="bg-gray-800 text-white p-4">
+    <a href="/" class="hover:underline">🏠 Back</a>
+  </nav>
+  <main class="p-8">
+    <h1 class="text-2xl font-bold mb-4">Contact Us</h1>
+    <form action="/contact" method="post" class="space-y-4">
+      <input type="text" name="name" placeholder="Name" required class="block w-full border px-4 py-2">
+      <input type="email" name="email" placeholder="Email" required class="block w-full border px-4 py-2">
+      <textarea name="message" placeholder="Message" required class="block w-full border px-4 py-2"></textarea>
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Send</button>
+    </form>
+  </main>
+</body>
+</html>
